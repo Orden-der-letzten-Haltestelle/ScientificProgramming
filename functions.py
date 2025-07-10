@@ -27,7 +27,7 @@ class Plottable():
                 xs = [minimum + i * width for i in range(n + 1)]
                 ys = [plottable(xi) for xi in xs]
 
-                if mode == 2:
+                if mode == 2: # Trapez
                     for i in range(n):
                         verts = [(xs[i], 0), (xs[i], ys[i]), (xs[i+1], ys[i+1]), (xs[i+1], 0)]
                         plt.gca().add_patch(plt.Polygon(verts, closed=True, alpha=0.3, color='orange'))
@@ -61,6 +61,23 @@ class Plottable():
         plt.ylabel('y')
         plt.legend()
         plt.show()
+
+    def plot_with_random_points(self, minimum: float, maximum: float, yBorderMin, yBorderMax, points : []) -> None:
+        x_vals = Plottable._get_x_values(minimum, maximum, 100)
+        y_vals = self.sample(minimum, maximum, 100)
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(x_vals, y_vals, label="Funktion")
+        
+        plt.axhline(y=yBorderMin, color='purple', linestyle='--')
+        plt.axhline(y=yBorderMax, color='purple', linestyle='--')
+
+        rand_x = points[:, 0]
+        rand_y = points[:, 1]
+
+        plt.scatter(rand_x, rand_y, color='red', s=10, label="Zufälliger Punkt")
+
+        Plottable._configure_plot_and_show()
 
 #====================================================================
 # Abstrakte Basisklasse der Funktionen
@@ -120,7 +137,7 @@ class MFunc(ABC, Plottable):
         try:
             result = self._call_internal(x)
         except: #z.B. durch Teilen durch Null
-            print(f"Error at {self} {x}")
+            #print(f"Error at {self} {x}")
             return math.nan
         return self.factor * result
 
@@ -152,7 +169,6 @@ class MFunc(ABC, Plottable):
 
         step = abs(end - start) / 100
         while (current <= end):
-            #table.append((i, self(i)))
             if self(current) == 0:
                 nullstellen.append(current)
             
@@ -306,6 +322,8 @@ class ConstFunc(MFunc):
     def derive(self):
         return ConstFunc(self.name + "'", 0.0, self.operand)
 
+    def integrate(self):
+        return PowerFunc(self.name.upper(), self.factor, 1)
 
 class ExpFunc(MFunc):
     '''
@@ -329,6 +347,8 @@ class ExpFunc(MFunc):
     def derive(self) -> MFunc:
         return ExpFunc(self.name+"'", self.factor * self.exp_factor, self.exp_factor, self.operand)
 
+    def  integrate(self):
+        return ExpFunc(self.name.upper(), self.factor * (1/self.exp_factor), self.exp_factor)
 
 class SinFunc(MFunc):
     '''
@@ -348,6 +368,9 @@ class SinFunc(MFunc):
     def derive(self) -> MFunc:
         return CosFunc(self.name + "'", self.factor * self.sin_factor, self.sin_factor, self.operand) 
 
+    def integrate(self):
+        return CosFunc(self.name.upper(), self.factor * (-1/self.sin_factor), self.sin_factor)
+    
 
 class CosFunc(MFunc):
     '''
@@ -366,6 +389,9 @@ class CosFunc(MFunc):
 
     def derive(self) -> MFunc:
         return SinFunc(self.name + "'", (-1) * self.factor * self.cos_factor, self.cos_factor, self.operand)
+
+    def integrate(self):
+        return SinFunc(self.name.upper(), self.factor * (1/self.cos_factor), self.cos_factor)
 
 class PowerFunc(MFunc):
     '''
@@ -387,6 +413,13 @@ class PowerFunc(MFunc):
         if self.exponent == 1: 
             return ConstFunc(self.name + "'", self.factor, self.operand)
         return PowerFunc(self.name + "'", self.factor * self.exponent, self.exponent - 1, self.operand) 
+
+    def integrate(self):
+        if self.exponent == -1:
+            print("x^-1 Klappt leider nicht!")
+            # Wäre ln(abs(x)), es gibt aber keine Klasse dafür
+            return None
+        return PowerFunc(self.name.upper(), self.factor * (1/(self.exponent+1)), self.exponent+1)
 
 #====================================================================
 # Verschiedene Kombination von Funktionen
@@ -436,6 +469,11 @@ class SumFunc(MFunc):
     def __len__(self):
         return len(self.terms)
 
+    def integrate(self):
+        newTerms = []
+        for ele in self.terms:
+            newTerms.append(ele.integrate())
+        return SumFunc(self.name.upper(), newTerms)
 
 class ProdFunc(MFunc):
     '''
@@ -462,6 +500,9 @@ class ProdFunc(MFunc):
     def derive(self) -> MFunc:
         return SumFunc(self.name + "'", [ProdFunc("", self.left.derive(), self.right, self.factor), ProdFunc("", self.left, self.right.derive(), self.factor)])
 
+    def integrate(self):
+        #Nicht nötig
+        return super().integrate()
 
 class NestedFunc(MFunc):
     '''
@@ -486,3 +527,7 @@ class NestedFunc(MFunc):
         d_inner = self.inner.derive()
         new_outer = NestedFunc("", d_outer, self.inner.clone())  # Außen abgeleitet, innen gleich
         return ProdFunc(self.name + "'", new_outer, d_inner, self.factor)
+    
+    def integrate(self):
+        #Nicht nötig
+        return super().integrate()
