@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import math
+import numpy as np
 
 class Plottable():
     '''
@@ -9,18 +10,51 @@ class Plottable():
         sample_list = [self(minimum + (i / (samples -1.0) * (maximum - minimum))) for i in range(0, samples)]
         return sample_list
 
-
     @staticmethod
     def _get_x_values(minimum : float, maximum : float, samples : int) -> [float]:
         return [minimum + (i / (samples - 1.0) * (maximum - minimum)) for i in range(0, samples)]
     
     @staticmethod
-    def multi_plot(plottables : [], minimum : float, maximum : float, samples : int = 100) -> None:
+    def multi_plot(plottables : [], minimum : float, maximum : float, samples : int = 100, area : bool = False, n : int = 7, mode : int = 0) -> None:
         plt.figure(figsize=(8, 6))
         x = Plottable._get_x_values(minimum, maximum, samples)
         for plottable in plottables:
             y = plottable.sample(minimum, maximum, samples)
             plt.plot(x, y, label=f"{plottable}")
+            #-------------------------------------------------------------#
+            # Untersumme
+            """if area:
+                # Rechteckbreite
+                width = (maximum - minimum) / n
+                for i in range(n):
+                    xi = minimum + i * width  # linker Rand des i-ten Intervalls
+                    if mode == 0: yi = min(plottable(xi), plottable(xi + width))    # Funktionswert am linken Rand
+                    elif mode == 1: yi = max(plottable(xi), plottable(xi + width))
+                    plt.gca().add_patch(plt.Rectangle((xi, 0), width, yi,
+                                                      alpha=0.3, edgecolor='blue', facecolor='cyan'))
+            """
+            if area:
+                width = (maximum - minimum) / n
+                xs = [minimum + i * width for i in range(n + 1)]
+                ys = [plottable(xi) for xi in xs]
+
+                if mode == 2:
+                    for i in range(n):
+                        verts = [(xs[i], 0), (xs[i], ys[i]), (xs[i+1], ys[i+1]), (xs[i+1], 0)]
+                        plt.gca().add_patch(plt.Polygon(verts, closed=True, alpha=0.3, color='orange'))
+
+                else:
+                    for i in range(n):
+                        xi = xs[i]
+                        if mode == 0:  # Untersumme
+                            yi = min(ys[i], ys[i+1])
+                        elif mode == 1:  # Obersumme
+                            yi = max(ys[i], ys[i+1])
+
+                        plt.gca().add_patch(plt.Rectangle((xi, 0), width, yi,
+                                                        alpha=0.3, edgecolor='blue', facecolor='cyan'))
+
+            #-------------------------------------------------------------#
         Plottable._configure_plot_and_show()
 
     def plot(self, minimum : float, maximum : float, samples : int = 100) -> None: 
