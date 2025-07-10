@@ -109,6 +109,150 @@ class MFunc(ABC, Plottable):
         '''
         pass
 
+    # @abstractmethod
+    def integrate(self):
+        '''
+        Gibt eine Stammfunktion dieser Funktion zurück. c = 0
+        '''
+        pass
+
+    def definite_integral(self, a, b):
+        sf = self.integrate()
+        return  sf(b) - sf(a)
+
+    def newton(self, start, end):
+        '''
+        Gibt die Nullstellen der Funktion numerisch wieder
+        '''
+        table = []
+        nullstellen = []
+        current = start
+
+        step = abs(end - start) / 10
+        while (current <= end):
+            #table.append((i, self(i)))
+            if self(current) == 0:
+                nullstellen.append(current)
+            
+            elif self(current) * self(current + step) < 0:
+                table.append(current)
+            current += step
+
+        if len(table) != 0:
+            for ele in table:
+                xn = ele - 1
+                x0 = ele
+                for l in range(31):
+                    if self.derive()(x0) == 0: 
+                        xn = x0 - self(x0)/(self.derive()(x0)+1e-5)
+                    else:
+                        xn = x0 - self(x0)/self.derive()(x0)
+                    x0 = xn
+
+                nullstellen.append(x0)
+        
+        nullstellen.sort()
+        print("Nullstellen:", nullstellen)
+        return nullstellen
+
+    def definitions_luecken(self, start, end):
+        luecken = [] 
+        step_factor = 0.1
+        for i in range(start * int(1/step_factor), end * int(1/step_factor)):
+            if math.isnan(self(i)):
+                luecken.append(i)
+
+        return luecken
+
+    def __untersumme(self, start, end, n):
+        sum = 0
+        width = abs(start - end) / n
+        for i in range(n):
+            x = start + i * width
+            if not math.isnan(self(x)):
+                sum += self(x) * width
+        
+        return abs(sum)
+
+    def untersumme(self, start, end, n = 10):
+        '''
+        Für die numerische Integration mit der Untersumme
+        '''
+        sum = 0
+        nullstellen = self.newton(start, end)
+
+        for i, ele in enumerate(nullstellen):
+            if ele != start:
+                sum += self.__untersumme(start, ele, n)
+            
+            if i < len(nullstellen)-1:
+                sum += self.__untersumme(ele, nullstellen[i+1], n)
+            else: 
+                sum += self.__untersumme(ele, end, n)
+
+        return sum
+
+    def __obersumme(self, start, end, n):
+        sum = 0
+        width = abs(start - end) / n
+        for i in range(1, n+1):
+            x = start + i * width
+            if not math.isnan(self(x)):
+                sum += self(x) * width
+        
+        return abs(sum)
+
+    def obersumme(self, start, end, n = 10):
+        '''
+        Für die numerische Integration mit der Obersumme
+        '''
+        sum = 0
+        nullstellen = self.newton(start, end)
+
+        for i, ele in enumerate(nullstellen):
+            print(i, ele)
+            if ele != start:
+                print("Obersumme 1", sum, start, ele)
+                sum += self.__obersumme(start, ele, n)
+            
+            if i < len(nullstellen)-1:
+                print("Obersumme 2", sum, ele, nullstellen[i+1]), 
+                sum += self.__obersumme(ele, nullstellen[i+1], n)
+            else: 
+                print("Obersumme 3", sum, ele, end)
+                sum += self.__obersumme(ele, end, n)
+
+        return sum
+
+    def __trapezregel(self, start, end, n):
+        sum = 0
+        width = abs(start - end) / n
+        for i in range(n):
+            x1 = start + i * width
+            x2 = start + (i+1) * width
+            if not (math.isnan(self(x1)) or math.isnan(self(x2))):
+                sum += 0.5 * (self(x1) + self(x2)) * width
+            
+        return abs(sum)
+
+    def trapezregel(self, start, end, n = 10):
+        '''
+        Für die numerische Integration mit der Trapezregel
+        '''
+        sum = 0
+        nullstellen = self.newton(start, end)
+
+        for i, ele in enumerate(nullstellen):
+            if ele != start:
+                sum += self.__trapezregel(start, ele, n)
+            
+            if i < len(nullstellen)-1:
+                sum += self.__trapezregel(ele, nullstellen[i+1], n)
+            else: 
+                sum += self.__trapezregel(ele, end, n)
+
+        return sum
+
     def clone(self):
         '''
         Erzeugt eine Kopie der funktion und aller ihrer Attribute.
