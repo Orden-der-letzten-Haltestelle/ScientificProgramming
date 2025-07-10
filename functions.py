@@ -15,12 +15,34 @@ class Plottable():
         return [minimum + (i / (samples - 1.0) * (maximum - minimum)) for i in range(0, samples)]
     
     @staticmethod
-    def multi_plot(plottables : [], minimum : float, maximum : float, samples : int = 100) -> None:
+    def multi_plot(plottables : [], minimum : float, maximum : float, samples : int = 100, area : bool = False, n : int = 7, mode : int = 0) -> None:
         plt.figure(figsize=(8, 6))
         x = Plottable._get_x_values(minimum, maximum, samples)
         for plottable in plottables:
             y = plottable.sample(minimum, maximum, samples)
             plt.plot(x, y, label=f"{plottable}")
+
+            if area:
+                width = (maximum - minimum) / n
+                xs = [minimum + i * width for i in range(n + 1)]
+                ys = [plottable(xi) for xi in xs]
+
+                if mode == 2:
+                    for i in range(n):
+                        verts = [(xs[i], 0), (xs[i], ys[i]), (xs[i+1], ys[i+1]), (xs[i+1], 0)]
+                        plt.gca().add_patch(plt.Polygon(verts, closed=True, alpha=0.3, color='orange'))
+
+                else:
+                    for i in range(n):
+                        xi = xs[i]
+                        if mode == 0:  # Untersumme
+                            yi = min(ys[i], ys[i+1])
+                        elif mode == 1:  # Obersumme
+                            yi = max(ys[i], ys[i+1])
+
+                        plt.gca().add_patch(plt.Rectangle((xi, 0), width, yi,
+                                                        alpha=0.3, edgecolor='blue', facecolor='cyan'))
+                        
         Plottable._configure_plot_and_show()
 
     def plot(self, minimum : float, maximum : float, samples : int = 100) -> None: 
@@ -108,6 +130,149 @@ class MFunc(ABC, Plottable):
         Gibt die Ableitungsfunktion dieser FUnktion zurück.
         '''
         pass
+
+    # @abstractmethod
+    def integrate(self):
+        '''
+        Gibt eine Stammfunktion dieser Funktion zurück. c = 0
+        '''
+        pass
+
+    def definite_integral(self, a, b):
+        sf = self.integrate()
+        return  sf(b) - sf(a)
+
+    def newton(self, start, end):
+        '''
+        Gibt die Nullstellen der Funktion numerisch wieder
+        '''
+        table = []
+        nullstellen = []
+        current = start
+
+        step = abs(end - start) / 100
+        while (current <= end):
+            #table.append((i, self(i)))
+            if self(current) == 0:
+                nullstellen.append(current)
+            
+            elif self(current) * self(current + step) < 0:
+                table.append(current)
+            current += step
+
+        if len(table) != 0:
+            for ele in table:
+                xn = ele - 1
+                x0 = ele
+                for l in range(31):
+                    if self.derive()(x0) == 0: 
+                        xn = x0 - self(x0)/(self.derive()(x0)+1e-5)
+                    else:
+                        xn = x0 - self(x0)/self.derive()(x0)
+                    x0 = xn
+
+                nullstellen.append(x0)
+        
+        nullstellen.sort()
+        #print("Nullstellen:", nullstellen)
+        return nullstellen
+
+    def definitions_luecken(self, start, end):
+        luecken = [] 
+        step_factor = 0.1
+        for i in range(start * int(1/step_factor), end * int(1/step_factor)):
+            if math.isnan(self(i)):
+                luecken.append(i)
+
+        return luecken
+
+    def __untersumme(self, start, end, n):
+        sum = 0
+        width = abs(start - end) / n
+        for i in range(n):
+            x = start + i * width
+            if not math.isnan(self(x)):
+                sum += self(x) * width
+        
+        return abs(sum)
+
+    def untersumme(self, start, end, n = 10):
+        '''
+        Für die numerische Integration mit der Untersumme
+        '''
+        sum = 0
+        nullstellen = self.newton(start, end)
+
+        for i, ele in enumerate(nullstellen):
+            if ele != start and i == 0:
+                sum += self.__untersumme(start, ele, n)
+            
+            if i < len(nullstellen)-1:
+                sum += self.__untersumme(ele, nullstellen[i+1], n)
+            else: 
+                sum += self.__untersumme(ele, end, n)
+
+        return sum
+
+    def __obersumme(self, start, end, n):
+        sum = 0
+        width = abs(start - end) / n
+        for i in range(1, n+1):
+            x = start + i * width
+            if not math.isnan(self(x)):
+                sum += self(x) * width
+        
+        return abs(sum)
+
+    def obersumme(self, start, end, n = 10):
+        '''
+        Für die numerische Integration mit der Obersumme
+        '''
+        sum = 0
+        nullstellen = self.newton(start, end)
+
+        for i, ele in enumerate(nullstellen):
+            if ele != start and i == 0:
+                print("Obersumme 1", sum, start, ele)
+                sum += self.__obersumme(start, ele, n)
+
+            if i < len(nullstellen)-1:
+                print("Obersumme 2", sum, ele, nullstellen[i+1]), 
+                sum += self.__obersumme(ele, nullstellen[i+1], n)
+            else: 
+                print("Obersumme 3", sum, ele, end)
+                sum += self.__obersumme(ele, end, n)
+
+        return sum
+
+    def __trapezregel(self, start, end, n):
+        sum = 0
+        width = abs(start - end) / n
+        for i in range(n):
+            x1 = start + i * width
+            x2 = start + (i+1) * width
+            if not (math.isnan(self(x1)) or math.isnan(self(x2))):
+                sum += 0.5 * (self(x1) + self(x2)) * width
+            
+        return abs(sum)
+
+    def trapezregel(self, start, end, n = 10):
+        '''
+        Für die numerische Integration mit der Trapezregel
+        '''
+        sum = 0
+        nullstellen = self.newton(start, end)
+
+        for i, ele in enumerate(nullstellen):
+            if ele != start and i == 0:
+                sum += self.__trapezregel(start, ele, n)
+            
+            if i < len(nullstellen)-1:
+                sum += self.__trapezregel(ele, nullstellen[i+1], n)
+            else: 
+                sum += self.__trapezregel(ele, end, n)
+
+        return sum
 
     def clone(self):
         '''
