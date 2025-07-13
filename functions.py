@@ -73,7 +73,7 @@ class Plottable():
         plt.legend()
         plt.show()
 
-    def plot_with_random_points(self, minimum: float, maximum: float, yBorderMin, yBorderMax, points : []) -> None:
+    def plot_with_random_points(self, minimum: float, maximum: float, yBorderMin, yBorderMax, points_hits, points_misses) -> None:
         x_vals = Plottable._get_x_values(minimum, maximum, 100)
         y_vals = self.sample(minimum, maximum, 100)
 
@@ -83,10 +83,8 @@ class Plottable():
         plt.axhline(y=yBorderMin, color='purple', linestyle='--')
         plt.axhline(y=yBorderMax, color='purple', linestyle='--')
 
-        rand_x = points[:, 0]
-        rand_y = points[:, 1]
-
-        plt.scatter(rand_x, rand_y, color='red', s=10, label="Zufälliger Punkt")
+        plt.scatter(points_hits[:, 0], points_hits[:, 1], color='green', s=10, label="Zufälliger Hit")
+        plt.scatter(points_misses[:, 0], points_misses[:, 1], color='red', s=10, label="Zufälliger Miss")
 
         Plottable._configure_plot_and_show()
 
