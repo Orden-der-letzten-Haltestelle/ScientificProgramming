@@ -18,6 +18,8 @@ class Plottable():
     def multi_plot(plottables : [], minimum : float, maximum : float, samples : int = 100, area : bool = False, n : int = 7, mode : int = 0) -> None:
         """
         mode can change between untersumme: 0, obersumme: 1, and trapezregel: 2
+        smaples are samples of function points
+        n is the number of collumns for the different visuals
         """
         plt.figure(figsize=(8, 6))
         x = Plottable._get_x_values(minimum, maximum, samples)
@@ -217,7 +219,7 @@ class MFunc(ABC, Plottable):
         for i in range(1, n+1):
             x = start + i * width
             if not math.isnan(self(x)):
-                sum += self(x) * width
+                sum += min(self(x), self(x - width)) * width
         
         return abs(sum)
 
@@ -249,7 +251,7 @@ class MFunc(ABC, Plottable):
         for i in range(n):
             x = start + i * width
             if not math.isnan(self(x)):
-                sum += self(x) * width
+                sum += max(self(x), self(x + width)) * width
         
         return abs(sum)
 
