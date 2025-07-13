@@ -16,6 +16,9 @@ class Plottable():
     
     @staticmethod
     def multi_plot(plottables : [], minimum : float, maximum : float, samples : int = 100, area : bool = False, n : int = 7, mode : int = 0) -> None:
+        """
+        mode can change between untersumme: 0, obersumme: 1, and trapezregel: 2
+        """
         plt.figure(figsize=(8, 6))
         x = Plottable._get_x_values(minimum, maximum, samples)
         for plottable in plottables:
