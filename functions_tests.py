@@ -419,7 +419,7 @@ class TestNestedFunc(unittest.TestCase):
         gd= self.g.derive()
         hd= self.h.derive()
 
-        self.assertTrue(type(fd) is f.ProdFunc)
+        self.assertTrue(type(fd) is ProdFunc)
         self.assertEqual(str(fd), "f'(x)=2.0sin(x)*cos(x)")
         self.assertAlmostEqual(fd(1.0), 0.9092974268256818)
         
